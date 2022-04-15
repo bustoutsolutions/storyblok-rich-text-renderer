@@ -10,7 +10,7 @@ export interface ResolverOptions {
 
 export interface Options {
   componentName?: string;
-  propName?: string;
+  propName?: string | boolean;
   resolvers?: ResolverOptions;
 }
 

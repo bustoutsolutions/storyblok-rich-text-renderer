@@ -1,4 +1,4 @@
-import Vue, { VNode } from 'vue';
+import Vue, { VNode, VueConstructor } from 'vue';
 import { h } from '@vue/composition-api';
 import {
   Node,
@@ -13,6 +13,8 @@ import {
   defaultMarkResolvers,
   defaultComponentResolvers,
   Resolvers,
+  ComponentResolverFunction,
+  ComponentResolverFunctionResponse,
 } from '../resolver';
 import {
   isBlockNode,
@@ -64,12 +66,31 @@ export function useRenderer(options: Options = {}) {
     const components: VNode[] = [];
 
     node.attrs.body.forEach((body) => {
-      const propName = options.propName || 'body';
+      const propName =
+        options.propName === false
+          ? null
+          : typeof options.propName === 'string' && options.propName
+          ? options.propName
+          : 'body';
       const { component } = body;
       const resolver =
         componentResolvers[component] || componentResolvers._fallback;
+      const resolverIsFallback = !componentResolvers[component] ? true : false;
 
-      components.push(h(resolver, { props: { [propName]: body } }));
+      if (resolverIsFallback) {
+        components.push(h(resolver as VueConstructor, { props: { body } }));
+      } else if (typeof resolver === 'function') {
+        const resolverFn = resolver as ComponentResolverFunction;
+        const {
+          component: resolvedComponent,
+          data: resolvedData,
+        }: ComponentResolverFunctionResponse = resolverFn(body);
+        components.push(h(resolvedComponent, resolvedData));
+      } else if (propName) {
+        components.push(h(resolver, { props: { [propName]: body } }));
+      } else {
+        components.push(h(resolver, { props: body }));
+      }
     });
 
     return components;
